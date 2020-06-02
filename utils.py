@@ -43,3 +43,19 @@ def log_data(f_idx, trench_threshold):
     print("Trench threshold = {}".format(trench_threshold))
     print("----------------------------------------------")
     return
+
+def discretize(points):
+    x_co = (points[:,0]*1000).round().astype('int')
+    y_co = (points[:,1]*1000).round().astype('int')
+    z_co = points[:,2]
+    return x_co, y_co, z_co
+
+def mask_heightmap(points_array, threshold):
+    heightmap = np.zeros((dim,dim,3)).astype('float')
+    x_co, y_co, z_co = points_array
+    heightmap[x_co, y_co,0] = 255
+
+    x_co = x_co[z_co > threshold]
+    y_co = y_co[z_co > threshold]
+    heightmap[x_co, y_co,1] = 255
+    return heightmap
