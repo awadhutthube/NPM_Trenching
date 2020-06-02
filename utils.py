@@ -20,11 +20,11 @@ def publish_threshold_frame(threshold):
                      "map")
     return
 
-def visualize_heightmap(heightmap, number):
+def visualize_heightmap(heightmap, number = None):
     plt.figure(2)
     plt.clf()
-    plt.imshow(heightmap)
-    plt.savefig('../heightmaps/bag_4/frame_' + str(number))
+    plt.imshow(heightmap, cmap = 'gray')
+    # plt.savefig('../heightmaps/bag_4/frame_' + str(number))
     plt.pause(0.002)
     return
 

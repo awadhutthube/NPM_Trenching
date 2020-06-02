@@ -6,7 +6,7 @@ import ros_numpy
 import rospy
 import sensor_msgs.point_cloud2 as pcl2
 import std_msgs
-
+import cv2
 import matplotlib.pyplot as plt
 import utils
 
@@ -29,7 +29,7 @@ def generate_histogram(datapoints, frame_idx, start = -0.03, end = 0.08, interva
     
 def get_trench_threshold(hist_data, hist_bins):
     max_idx = np.argmax(hist_data)
-    threshold = hist_bins[max_idx-15]
+    threshold = hist_bins[max_idx]
     return threshold
 
 def read_rosbag(filepath):
@@ -42,8 +42,11 @@ def read_rosbag(filepath):
         transformed_xyz -= mean_xyz
         data, bins = generate_histogram(transformed_xyz[:,2], idx, draw = False)
         trench_thresh = get_trench_threshold(data, bins)
-        heightmap, trench_thresh = generate_heightmap(transformed_xyz, trench_thresh, mask = True)
-        utils.visualize_heightmap(heightmap, idx)        
+
+        segment_wheel(transformed_xyz, trench_thresh)
+        # heightmap, trench_thresh = generate_heightmap(transformed_xyz, trench_thresh, mask = True)
+        # utils.visualize_heightmap(heightmap, idx)        
+
         publish_transformed_cloud(transformed_xyz)
         utils.log_data(idx, trench_thresh)
     return
@@ -69,6 +72,47 @@ def generate_heightmap(points, threshold, dim = 500, mask = False):
         masked_y_co = y_co[z_co < threshold]
         heightmap[masked_x_co, masked_y_co, 1] = 1    
     return heightmap, threshold
+
+def segment_wheel(points, threshold):
+    min_array = np.amin(points, axis = 0)
+    points -= min_array
+    visualize_wheel_segment(points, threshold - min_array[2] + 0.04)
+    return points
+
+def fit_line(x,y):
+    num = x.shape[0]
+    homogenious_coordinates = np.hstack((x.reshape(num,1), y.reshape(num,1), np.ones((x.shape[0],1))))
+    print(homogenious_coordinates.shape)
+    U, S, VT = np.linalg.svd(homogenious_coordinates)
+    params = VT[:,-1]
+    print(params)
+    return params
+
+def visualize_wheel_segment(points, shifted_threshold, dim = 500):
+    heightmap = np.zeros((dim,dim)).astype('uint8')
+    x_co = (points[:,0]*1000).round().astype('int')
+    y_co = (points[:,1]*1000).round().astype('int')
+    z_co = points[:,2]
+    x_co = x_co[z_co > shifted_threshold]
+    y_co = y_co[z_co > shifted_threshold]
+    heightmap[x_co, y_co] = 255
+    # params = fit_line(x_co[::4], y_co[::4])
+    # cv2.imshow('win1', heightmap)
+    # cv2.waitKey(1)
+    _, cnt, _ = cv2.findContours(heightmap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    print(len(cnt))
+    # cv2.drawContours(heightmap, cnt, -1, (0,255,0), 3)
+    c = max(cnt, key = cv2.contourArea)
+    x,y,w,h = cv2.boundingRect(c)
+    # points = cv2.findNonZero(heightmap)
+    # rect = cv2.minAreaRect(points)
+    print(x,y,w,h)
+    # x1, y1 = rect[0]
+    # x2, y2 = rect[1]
+    # cv2.rectangle(heightmap, (int(x2), int(y2)), (int(x2+x1), int(y2+y1)), (255, 0, 0), 2)
+    cv2.rectangle(heightmap, (x,y), (x+w, y+h), (255, 0, 0), 2)
+    utils.visualize_heightmap(heightmap)
+    return heightmap
 
 def publish_transformed_cloud(cloud_array, flag = True):
     header = std_msgs.msg.Header()
