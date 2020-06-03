@@ -25,7 +25,7 @@ def visualize_heightmap(heightmap, number = None):
     plt.clf()
     plt.imshow(heightmap, cmap = 'gray')
     # plt.savefig('../heightmaps/bag_4/frame_' + str(number))
-    plt.pause(0.002)
+    plt.pause(0.01)
     return
 
 def visualize_histogram(datapoints, bin_sequence, f_idx):
@@ -50,12 +50,14 @@ def discretize(points):
     z_co = points[:,2]
     return x_co, y_co, z_co
 
-def mask_heightmap(points_array, threshold):
-    heightmap = np.zeros((dim,dim,3)).astype('float')
-    x_co, y_co, z_co = points_array
-    heightmap[x_co, y_co,0] = 255
+def mask_heightmap(points_array, bool_array, heightmap):
+    # heightmap = np.zeros((dim,dim,3)).astype('float')
+    # bool_array = bool_array[bool_array > 0]
+    # print(bool_array.shape)
+    points_array[:,0] -= np.amin(points_array[:,0])
+    points_array[:,1] -= np.amin(points_array[:,1])
+    points_array = points_array[bool_array > 0]
+    x_co, y_co, z_co = discretize(points_array)
+    heightmap[x_co, y_co] = 1
 
-    x_co = x_co[z_co > threshold]
-    y_co = y_co[z_co > threshold]
-    heightmap[x_co, y_co,1] = 255
     return heightmap

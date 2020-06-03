@@ -19,7 +19,7 @@ def get_wheel_bbox(points, shifted_threshold, dim = 500):
     heightmap[x_co, y_co] = 255
 
     kernel = np.ones((5,5),np.uint8)
-    heightmap = cv2.dilate(heightmap,kernel,iterations = 3)
+    heightmap = cv2.dilate(heightmap,kernel,iterations = 5)
 
     _, cnt, _ = cv2.findContours(heightmap, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     c = max(cnt, key = cv2.contourArea)
@@ -32,7 +32,7 @@ def get_wheel_bbox(points, shifted_threshold, dim = 500):
     return bbox, heightmap
 
 def visualize_wheel_segment(bbox, heightmap):
-    cv2.drawContours(heightmap,[bbox],0,(255,255,255),2)
+    cv2.drawContours(heightmap,[bbox],0,(25,0,0),2)
     utils.visualize_heightmap(heightmap)
     return
 
@@ -45,3 +45,24 @@ def fit_line(x,y):
     print(params)
     return params
 
+def get_points(bbox):
+    a = bbox[0]
+    b = bbox[1]
+    return a, b
+
+def check_side(points, bbox):
+    a, b = get_points(bbox)
+
+    m = (float(b[0]) - a[0])/(b[1] - a[1])
+    l = np.array([m, -1, a[0] - m*a[1]])
+
+    points[:,0] -= np.amin(points[:,0])
+    points[:,1] -= np.amin(points[:,1])  
+    # points[:,1], points[:,0] = (points[:,0]*1000).round().astype('int') , (points[:,1]*1000).round().astype('int')
+
+    points[:,0] = (points[:,0]*1000).round().astype('int')
+    points[:,1] = (points[:,1]*1000).round().astype('int')
+    points[:,2] = 1
+    bool_array = points*l
+    bool_array = np.sum(bool_array, axis = 1)
+    return bool_array
