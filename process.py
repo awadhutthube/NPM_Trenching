@@ -53,7 +53,9 @@ def read_rosbag(filepath):
 
         # Segmenting the wheel from raw cloud
         bbox, heightmap = wb.segment_wheel(transformed_xyz.copy(), trench_thresh)
-        # wb.visualize_wheel_segment(bbox, heightmap)
+        heightmap = wb.visualize_wheel_segment(bbox, heightmap)
+        # utils.visualize_heightmap(heightmap, idx)    
+
         # cv2.circle(heightmap,(bbox[0][0], bbox[0][1]), 10, (255), -1)
         # cv2.circle(heightmap,(bbox[1][0], bbox[1][1]), 10, (255), -1)
         # cv2.imshow('test', heightmap)
@@ -61,15 +63,19 @@ def read_rosbag(filepath):
 
         # draw_circles(bbox, heightmap)
 
+
+
         bool_array = wb.check_side(transformed_xyz.copy(), bbox)
+
 
         # Generating a heightmap and masking based on estimated threshold
         heightmap, trench_thresh = generate_heightmap(transformed_xyz, trench_thresh, mask = False)
         heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
         utils.visualize_heightmap(heightmap, idx)        
 
-        # # # Publishing the transformed cloud and logging essential data
-        # # publish_transformed_cloud(transformed_xyz)
+        transformed_xyz = transformed_xyz[bool_array < 0]
+        # Publishing the transformed cloud and logging essential data
+        publish_transformed_cloud(transformed_xyz)
         utils.log_data(idx, trench_thresh)
 
     return
