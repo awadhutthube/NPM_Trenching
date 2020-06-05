@@ -35,14 +35,12 @@ def visualize_wheel_segment(bbox, heightmap):
     cv2.drawContours(heightmap,[bbox],0,(255,0,0),2)
     return heightmap
 
-def fit_line(x,y):
-    num = x.shape[0]
-    homogenious_coordinates = np.hstack((x.reshape(num,1), y.reshape(num,1), np.ones((x.shape[0],1))))
-    print(homogenious_coordinates.shape)
-    U, S, VT = np.linalg.svd(homogenious_coordinates)
-    params = VT[:,-1]
-    print(params)
-    return params
+def fit_line(trans, slope):
+    m = slope
+    x, y = trans
+    l1 = np.array([m, -1, a[0] - m*a[1]])
+    
+    return l1
 
 def get_points(bbox):
     a = bbox[0]

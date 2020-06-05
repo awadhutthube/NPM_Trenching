@@ -10,12 +10,15 @@ import matplotlib.pyplot as plt
 import utils
 import wheel_boundary as wb
 import copy
+import tf
+
 
 plt.ion()
 pub1 = rospy.Publisher('/cloud_transformed', PointCloud2, queue_size=5)
 pub2 = rospy.Publisher('/cloud_original', PointCloud2, queue_size=5)
 
-tvec = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688+1]
+idx = 0
+tvec = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688]
 quat = [0.9378418721923328, 0.1422734925170896, -0.04777733124311015, -0.31293482182246196]
 
 
@@ -33,52 +36,57 @@ def get_trench_threshold(hist_data, hist_bins):
     threshold = hist_bins[max_idx]
     return threshold
 
-def read_rosbag(filepath):
-    bag = rosbag.Bag(bagfile_path, 'r')
+def cloud_sub_callback(msg):
+    global idx
+    xyz = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg, remove_nans=True)
+        
+    # Transforming cloud into map frame and normalizing for 0 mean
+    H = utils.get_transformation_matrix(tvec, quat)
+    transformed_xyz = transform_cloud(xyz, H)
+    mean_xyz = np.mean(transformed_xyz, axis = 0)
+    transformed_xyz -= mean_xyz
+    print("Min values are {}".format(np.amin(transformed_xyz, axis = 0)))
+
+    try:
+        (trans,rot) = tf_tree.lookupTransform('base_link', 'RR', rospy.Time(0))
+    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        print("No TF data")
+        return
     
-    for idx, (topic, msg, t) in enumerate(bag.read_messages(topics=['/sensor/side_camera/depth/color/points'])):
-        xyz = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg, remove_nans=True)
+    H = utils.get_transformation_matrix(trans, rot)
+
+    euler_angles = utils.euler_from_quaternion(rot)
+    trans -= np.amin(transformed_xyz, axis = 0)
+    trans -= mean_xyz
+
+
+
+    heightmap, trench_thresh = generate_heightmap(transformed_xyz, 0, mask = False)
+    # utils.visualize_heightmap(heightmap, idx)        
+
+    # utils.log_data(idx, 'trench_thresh')
+    idx += 1
+
+
+    # # Generating a histogram for the depth of points
+    # data, bins = generate_histogram(transformed_xyz[:,2], idx, draw = False)
         
-        # Transforming cloud into map frame and normalizing for 0 mean
-        H = utils.get_transformation_matrix(tvec, quat)
-        transformed_xyz = transform_cloud(xyz, H)
-        mean_xyz = np.mean(transformed_xyz, axis = 0)
-        transformed_xyz -= mean_xyz
+    # # Estimating a rough threshold based on the histogram
+    # trench_thresh = get_trench_threshold(data, bins)
 
-        # Generating a histogram for the depth of points
-        data, bins = generate_histogram(transformed_xyz[:,2], idx, draw = False)
-        
-        # Estimating a rough threshold based on the histogram
-        trench_thresh = get_trench_threshold(data, bins)
+    # # Segmenting the wheel from raw cloud
+    # bbox, heightmap = wb.segment_wheel(transformed_xyz.copy(), trench_thresh)
+    # heightmap = wb.visualize_wheel_segment(bbox, heightmap)
+    # # utils.visualize_heightmap(heightmap, idx)    
 
-        # Segmenting the wheel from raw cloud
-        bbox, heightmap = wb.segment_wheel(transformed_xyz.copy(), trench_thresh)
-        heightmap = wb.visualize_wheel_segment(bbox, heightmap)
-        # utils.visualize_heightmap(heightmap, idx)    
+    # bool_array = wb.check_side(transformed_xyz.copy(), bbox)
 
-        # cv2.circle(heightmap,(bbox[0][0], bbox[0][1]), 10, (255), -1)
-        # cv2.circle(heightmap,(bbox[1][0], bbox[1][1]), 10, (255), -1)
-        # cv2.imshow('test', heightmap)
-        # cv2.waitKey(1)
+    # # Generating a heightmap and masking based on estimated threshold
+    # heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
 
-        # draw_circles(bbox, heightmap)
-
-
-
-        bool_array = wb.check_side(transformed_xyz.copy(), bbox)
-
-
-        # Generating a heightmap and masking based on estimated threshold
-        heightmap, trench_thresh = generate_heightmap(transformed_xyz, trench_thresh, mask = False)
-        heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
-        utils.visualize_heightmap(heightmap, idx)        
-
-        transformed_xyz = transformed_xyz[bool_array < 0]
-        # Publishing the transformed cloud and logging essential data
-        publish_transformed_cloud(transformed_xyz)
-        utils.log_data(idx, trench_thresh)
-
-    return
+    # transformed_xyz = transformed_xyz[bool_array < 0]
+    # Publishing the transformed cloud and logging essential data
+    publish_transformed_cloud(transformed_xyz)
 
 def draw_circles(bbox, heightmap):
     plt.figure(2)
@@ -110,7 +118,7 @@ def generate_heightmap(points, threshold, dim = 500, mask = False):
 def publish_transformed_cloud(cloud_array, flag = True):
     header = std_msgs.msg.Header()
     header.stamp = rospy.Time.now()
-    header.frame_id = 'map'
+    header.frame_id = 'base_link'
     if not flag:
         header.frame_id = 'sensor/side_camera_depth_optical_frame'
         cloud = pcl2.create_cloud_xyz32(header,cloud_array)
@@ -131,10 +139,6 @@ def transform_cloud(cloud_array, transformation_matrix = np.eye(4)):
 
 if __name__ == '__main__':
     rospy.init_node('cloud_processing_node')
-    # bagfile_path = '../test_data/01_K10MINI_2020-05-14-16-23-00.bag'
-    # bagfile_path = '../test_data/02_K10MINI_2020-05-14-16-31-57.bag'
-    # bagfile_path = '../test_data/03_K10MINI_2020-05-14-16-44-14.bag'
-    # bagfile_path = '../test_data/04_K10MINI_2020-05-14-16-49-59.bag'
-    read_rosbag(bagfile_path)
-    plt.ioff()
-    print("Processing Complete")
+    tf_tree = tf.TransformListener()
+    rospy.Subscriber('/sensor/side_camera/depth/color/points', PointCloud2, cloud_sub_callback)
+    rospy.spin()

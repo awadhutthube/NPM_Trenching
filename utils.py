@@ -11,6 +11,11 @@ def get_transformation_matrix(tvec, quat):
     transformation_matrix[:3,-1] = tvec
     return transformation_matrix
 
+def euler_from_quaternion(quat):
+    r = R.from_quat(quat)
+    return r.as_euler('zyx', degrees=True)
+
+
 def publish_threshold_frame(threshold):
     br = tf.TransformBroadcaster()
     br.sendTransform((0,0,threshold),

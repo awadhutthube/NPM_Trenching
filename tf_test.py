@@ -4,18 +4,19 @@ import numpy as np
 from tf import TransformListener
 import ros_numpy
 import tf
-
+import time
 rospy.init_node('tf_listener')
 
 tf_tree = TransformListener()
 
 while not rospy.is_shutdown():
     try:
-        (trans,rot) = tf_tree.lookupTransform('base_link', 'sensor/side_camera_depth_optical_frame', rospy.Time(0))
+        (trans,rot) = tf_tree.lookupTransform('base_link', 'RR', rospy.Time(0))
+        time.sleep(0.1)
         print(trans, rot)
     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
         print("No TF data")
-        break
+        # break
 
 
 translation = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688]
