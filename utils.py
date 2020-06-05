@@ -3,6 +3,7 @@ import tf
 import matplotlib.pyplot as plt
 import numpy as np
 import rospy
+import cv2
 
 def get_transformation_matrix(tvec, quat):
     transformation_matrix = np.eye(4)
@@ -26,11 +27,12 @@ def publish_threshold_frame(threshold):
     return
 
 def visualize_heightmap(heightmap, number = None):
-    plt.figure(2)
-    plt.clf()
-    plt.imshow(heightmap, cmap = 'gray')
-    plt.savefig('../heightmaps/bag_3/frame_' + str(number))
-    plt.pause(0.01)
+    cv2.imwrite('../heightmaps/bag_2/frame_' + str(number) + '.jpg', heightmap*255)
+    # plt.figure(2)
+    # plt.clf()
+    # plt.imshow(heightmap, cmap = 'gray')
+    # plt.savefig('../heightmaps/bag_3/frame_' + str(number))
+    # plt.pause(0.01)
     return
 
 def visualize_histogram(datapoints, bin_sequence, f_idx):
@@ -62,8 +64,17 @@ def mask_heightmap(points_array, bool_array, heightmap):
     # print(bool_array.shape)
     points_array[:,0] -= np.amin(points_array[:,0])
     points_array[:,1] -= np.amin(points_array[:,1])
-    points_array = points_array[bool_array < 0]
+    points_array = points_array[bool_array == 1]
     x_co, y_co, z_co = discretize(points_array)
     heightmap[x_co, y_co,1] = 1
 
     return heightmap
+
+def draw_circles(bbox, heightmap):
+    plt.figure(2)
+    plt.clf()
+    plt.imshow(heightmap, cmap = 'gray')
+    plt.scatter(bbox[0][0], bbox[0][1], color = 'g')
+    plt.scatter(bbox[1][0], bbox[1][1], color = 'g')
+    plt.plot((bbox[0][0], bbox[1][0]), (bbox[0][1], bbox[1][1]), '-')
+    plt.pause(0.2)

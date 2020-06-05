@@ -12,11 +12,14 @@ import wheel_boundary as wb
 import copy
 import tf
 
-
+# Non-blocking visualization of images
 plt.ion()
+
+# Creating publisher objects
 pub1 = rospy.Publisher('/cloud_transformed', PointCloud2, queue_size=5)
 pub2 = rospy.Publisher('/cloud_original', PointCloud2, queue_size=5)
 
+# Initialization of constants and utility variables
 idx = 0
 tvec = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688]
 quat = [0.9378418721923328, 0.1422734925170896, -0.04777733124311015, -0.31293482182246196]
@@ -45,57 +48,36 @@ def cloud_sub_callback(msg):
     transformed_xyz = transform_cloud(xyz, H)
     mean_xyz = np.mean(transformed_xyz, axis = 0)
     transformed_xyz -= mean_xyz
-    print("Min values are {}".format(np.amin(transformed_xyz, axis = 0)))
 
+    # Finding the wheel's pose w.r.t the robot's base_link
     try:
         (trans,rot) = tf_tree.lookupTransform('base_link', 'RR', rospy.Time(0))
     except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
         print("No TF data")
         return
     
-    H = utils.get_transformation_matrix(trans, rot)
-
+    # Computing translation and rotation of the wheel frame along each axis
     euler_angles = utils.euler_from_quaternion(rot)
     trans -= np.amin(transformed_xyz, axis = 0)
     trans -= mean_xyz
+    trans = (trans*1000).round()
 
+    # Generating heightmap using all points in the cloud
+    heightmap, trench_thresh = generate_heightmap(transformed_xyz.copy(), 0, mask = False)
 
+    # Segmenting the trench using equations of lines passing through the wheel's frame
+    line1, line2 = wb.fit_line(trans, euler_angles[1]+90)
+    bool_array = wb.check_side(transformed_xyz.copy(), line1, line2)
+    heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
+    
+    # Visualizing and saving the heightmaps
+    utils.visualize_heightmap(heightmap, idx)        
 
-    heightmap, trench_thresh = generate_heightmap(transformed_xyz, 0, mask = False)
-    # utils.visualize_heightmap(heightmap, idx)        
-
-    # utils.log_data(idx, 'trench_thresh')
-    idx += 1
-
-
-    # # Generating a histogram for the depth of points
-    # data, bins = generate_histogram(transformed_xyz[:,2], idx, draw = False)
-        
-    # # Estimating a rough threshold based on the histogram
-    # trench_thresh = get_trench_threshold(data, bins)
-
-    # # Segmenting the wheel from raw cloud
-    # bbox, heightmap = wb.segment_wheel(transformed_xyz.copy(), trench_thresh)
-    # heightmap = wb.visualize_wheel_segment(bbox, heightmap)
-    # # utils.visualize_heightmap(heightmap, idx)    
-
-    # bool_array = wb.check_side(transformed_xyz.copy(), bbox)
-
-    # # Generating a heightmap and masking based on estimated threshold
-    # heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
-
-    # transformed_xyz = transformed_xyz[bool_array < 0]
-    # Publishing the transformed cloud and logging essential data
+    # Publishing the segmented cloud and logging essential data
+    transformed_xyz = transformed_xyz[bool_array < 0]
     publish_transformed_cloud(transformed_xyz)
-
-def draw_circles(bbox, heightmap):
-    plt.figure(2)
-    plt.clf()
-    plt.imshow(heightmap, cmap = 'gray')
-    plt.scatter(bbox[0][0], bbox[0][1], color = 'g')
-    plt.scatter(bbox[1][0], bbox[1][1], color = 'g')
-    plt.plot((bbox[0][0], bbox[1][0]), (bbox[0][1], bbox[1][1]), '-')
-    plt.pause(0.2)
+    idx += 1
+    return
 
 def generate_heightmap(points, threshold, dim = 500, mask = False):
     heightmap = np.zeros((dim,dim,3)).astype('float')

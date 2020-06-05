@@ -36,40 +36,48 @@ def visualize_wheel_segment(bbox, heightmap):
     return heightmap
 
 def fit_line(trans, slope):
-    m = slope
-    x, y = trans
-    l1 = np.array([m, -1, a[0] - m*a[1]])
+    shift1 = 60
+    shift2 = -40
+    m = np.tan(slope, dtype = 'd')
+    x, y, z = trans
+    # print(x,y)
+    if abs(slope) < 95 and abs(slope) > 85:
+        l1 = np.array([0,1,-y + shift1])
+        l2 = np.array([0,1,-y + shift2])
+    else:   
+        l1 = -np.array([m, -1, y - m*x - shift1])
+        l2 = -np.array([m, -1, y - m*x - shift2])
     
-    return l1
+    # print("Angle is {}".format(slope))
+    # print("Slope is {}".format(m))
+    # print("Coordinates are {} and {}".format(x,y))
+    return l1, l2
 
 def get_points(bbox):
     a = bbox[0]
     b = bbox[1]
     return a, b
 
-def check_side(points, bbox):
-    a, b = get_points(bbox)
-
-    if (b[1] - a[1]) != 0:
-        m = (float(b[0]) - a[0])/(b[1] - a[1])
-    else:
-        m = float('inf')
-    
-    
-    l1 = np.array([m, -1, a[0] - m*a[1]])
-    l2 = np.array([m, -1, a[0] - m*a[1]+120])
+def check_side(points, l1, l2):
     points[:,0] -= np.amin(points[:,0])
     points[:,1] -= np.amin(points[:,1])  
     # points[:,1], points[:,0] = (points[:,0]*1000).round().astype('int') , (points[:,1]*1000).round().astype('int')
     points[:,0] = (points[:,0]*1000).round().astype('int')
     points[:,1] = (points[:,1]*1000).round().astype('int')
     points[:,2] = 1
+
     bool_array1 = points*l1
     bool_array1 = np.sum(bool_array1, axis = 1)
 
     bool_array2 = points*l2
     bool_array2 = np.sum(bool_array2, axis = 1)
 
-    bool_array = bool_array1*bool_array2
+    bool_array1[bool_array1 > 0] = 1
+    bool_array1[bool_array1 < 0] = 0
+    bool_array2[bool_array2 > 0] = 0
+    bool_array2[bool_array2 < 0] = 1
+
+    bool_array = np.multiply(bool_array1, bool_array2)
+    print(bool_array)
     
     return bool_array
