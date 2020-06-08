@@ -23,22 +23,7 @@ pub2 = rospy.Publisher('/cloud_original', PointCloud2, queue_size=5)
 idx = 0
 tvec = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688]
 quat = [0.9378418721923328, 0.1422734925170896, -0.04777733124311015, -0.31293482182246196]
-
-
-def generate_histogram(datapoints, frame_idx, start = -0.03, end = 0.08, interval_size = 0.0005, draw = False):
-    num = (end-start)//interval_size
-    bin_sequence = np.linspace(start, end, num)
-    if draw:    
-        data, bins = utils.visualize_histogram(datapoints, bin_sequence, frame_idx)
-    else:
-        data, bins = np.histogram(datapoints, bin_sequence) 
-    return data, bins
     
-def get_trench_threshold(hist_data, hist_bins):
-    max_idx = np.argmax(hist_data)
-    threshold = hist_bins[max_idx]
-    return threshold
-
 def cloud_sub_callback(msg):
     global idx
     xyz = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg, remove_nans=True)
@@ -66,7 +51,7 @@ def cloud_sub_callback(msg):
     heightmap, trench_thresh = generate_heightmap(transformed_xyz.copy(), 0, mask = False)
 
     # Segmenting the trench using equations of lines passing through the wheel's frame
-    line1, line2 = wb.fit_line(trans, euler_angles[1]+90)
+    line1, line2 = wb.fit_line(trans, euler_angles[1], idx)
     bool_array = wb.check_side(transformed_xyz.copy(), line1, line2)
     heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
     
@@ -74,7 +59,7 @@ def cloud_sub_callback(msg):
     utils.visualize_heightmap(heightmap, idx)        
 
     # Publishing the segmented cloud and logging essential data
-    transformed_xyz = transformed_xyz[bool_array < 0]
+    transformed_xyz = transformed_xyz[bool_array == 1]
     publish_transformed_cloud(transformed_xyz)
     idx += 1
     return
