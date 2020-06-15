@@ -32,26 +32,21 @@ def visualize_wheel_segment(bbox, heightmap):
 
 
 def fit_line(trans, slope, idx):
-    shift = 80
-    print(np.pi)
-    print("Frame index is {}".format(idx))
-    print("The raw angle is {}".format(slope))
-    # if slope <= 0:
-    #     slope = -slope
-    # else:
-    #     slope = -slope
+    shift1 = 80
+    shift2 = 120
     m = np.tan(np.pi*-slope/180)
     x, y, z = trans
-    print("Tangent is {}".format(m))
-    print("Position is x = {} y = {}".format(x,y))
-    print("")
     if m != 0:
-        l1 = -np.array([m, -1, y - m*x - shift])
-        l2 = -np.array([m, -1, y - m*x + shift])
+        l1 = -np.array([m, -1, y - m*x - shift1])
+        l2 = -np.array([m, -1, y - m*x + shift1])
+        l3 = -np.array([-1/m, -1, y - (-1/m)*x - shift2])
     else:   
-        l1 = np.array([0,1,-y + shift])
-        l2 = np.array([0,1,-y - shift])
-    return l1, l2
+        l1 = np.array([0,1,-y + shift1])
+        l2 = np.array([0,1,-y - shift1])
+        l3 = np.array([1,0,-x + shift2])
+
+    
+    return l1, l2, l3
 
 
 def get_points(bbox):
@@ -60,7 +55,7 @@ def get_points(bbox):
     return a, b
 
 
-def check_side(points, l1, l2):
+def check_side(points, l1, l2, l3):
     points[:,0] -= np.amin(points[:,0])
     points[:,1] -= np.amin(points[:,1])  
 
@@ -74,11 +69,18 @@ def check_side(points, l1, l2):
     bool_array2 = points*l2
     bool_array2 = np.sum(bool_array2, axis = 1)
 
+    bool_array3 = points*l3
+    bool_array3 = np.sum(bool_array3, axis = 1)
+
     bool_array1[bool_array1 > 0] = 1
     bool_array1[bool_array1 < 0] = 0
     bool_array2[bool_array2 > 0] = 0
     bool_array2[bool_array2 < 0] = 1
 
+    bool_array3[bool_array3 > 0] = 0
+    bool_array3[bool_array3 < 0] = 1
+
     bool_array = np.multiply(bool_array1, bool_array2)
+    bool_array = np.multiply(bool_array, bool_array3)
     # print(bool_array)    
     return bool_array

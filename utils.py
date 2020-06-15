@@ -18,6 +18,9 @@ def euler_from_quaternion(quat):
     r = R.from_quat(quat)
     return r.as_euler('zyx', degrees=True)
 
+def quaternion_from_euler(euler_angles):
+    r = R.from_rotvec(euler_angles)
+    return r.as_quat()
 
 def publish_threshold_frame(threshold):
     br = tf.TransformBroadcaster()
@@ -25,7 +28,7 @@ def publish_threshold_frame(threshold):
                      tf.transformations.quaternion_from_euler(0, 0, 0),
                      rospy.Time.now(),
                      "threshold_frame",
-                     "map")
+                     "base_link")
     return
 
 
@@ -47,7 +50,7 @@ def visualize_histogram(datapoints, bin_sequence, f_idx):
     axes.set_xlim([-0.03,0.08])
     data, bins, _ = plt.hist(datapoints, bin_sequence)
     plt.savefig('../histograms/bag_4/frame_' + str(f_idx))
-    plt.pause(0.002)
+    # plt.pause(0.002)
     return data, bins
 
 
@@ -88,7 +91,7 @@ def generate_histogram(datapoints, frame_idx, start = -0.03, end = 0.08, interva
     num = (end-start)//interval_size
     bin_sequence = np.linspace(start, end, num)
     if draw:    
-        data, bins = utils.visualize_histogram(datapoints, bin_sequence, frame_idx)
+        data, bins = visualize_histogram(datapoints, bin_sequence, frame_idx)
     else:
         data, bins = np.histogram(datapoints, bin_sequence) 
     return data, bins
