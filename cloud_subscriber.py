@@ -14,6 +14,8 @@ import tf
 import sys
 import estimate
 import time
+
+
 # Non-blocking visualization of images
 plt.ion()
 
@@ -68,14 +70,15 @@ def cloud_sub_callback(msg):
     H = utils.get_transformation_matrix(np.zeros(3), z_quat)
     transformed_xyz = transform_cloud(transformed_xyz, H)
     transformed_xyz[:,0] -= np.amin(transformed_xyz[:,0])
-
+    publish_transformed_cloud(transformed_xyz,0)
     intervals = estimate.slice_points(transformed_xyz)
     maps_list = [None]*(len(intervals)-1)
     for i in range(len(intervals)-1):
         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
         maps_list[i] = estimate.project_section(section)
+        # maps_list[i] = cv2.cvtColor(maps_list[i], cv2.COLOR_BGR2GRAY)
         cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', maps_list[i]*255)
-        print(i)
+        # print(i)
         # if idx%5 == 0:
         #     publish_transformed_cloud(section,0)
         #     plt.imshow(maps_list[i], cmap = 'gray')
