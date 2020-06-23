@@ -4,7 +4,6 @@ import cv2
 import matplotlib.pyplot as plt
 
 plt.ion()
-
 def slice_points(cloud_array, n_slices = 5):
     # slices = np.split(cloud_array, n_slices, axis = 0)
     max_val = np.amax(cloud_array[:,0])
@@ -18,16 +17,22 @@ def get_section(cloud_array, low_bound, high_bound):
     section = section[section[:,0] < high_bound]
     return section
 
-def project_section(section):
+def project_section(section, idx, i):
     section = sort_increasing(section)
-    y_co = (section[:,1]*3000).round().astype('int')
-    z_co = (section[:,2]*3000).round().astype('int')
+    y_co = (section[:,1]*1000).round().astype('int')
+    z_co = (section[:,2]*1000).round().astype('int')
     y_co -= np.amin(y_co)
     z_co -= np.amin(z_co)
-    # slope = compute_slope(y_co, z_co)
-    # slope = np.append(slope,1)
-    s_map = np.zeros((200,500))
-    s_map[199-z_co, 499-y_co] = 1
+    unique, counts = np.unique(y_co,return_counts = True)
+    dict_ = {element: round(np.mean(z_co[y_co == element])) for element in unique}
+    # print(dict_)
+    print('_________________________________________________________')
+    row = np.array(dict_.values()).astype('int')
+    column = np.array(dict_.keys()).astype('int')
+    s_map = np.zeros((70,200)).astype('int')
+    s_map[69-row, 199-column] = 255
+    # plt.clf()
+    print(s_map)
     return s_map
 
 def compute(image):
@@ -35,36 +40,49 @@ def compute(image):
     xx, yy = np.meshgrid(row, column)
     xx = xx.flatten('F')
     yy = yy.flatten('F')
+    # print(xx, yy)
     flat_image = image.flatten()
+    # print(flat_image)
     xx = xx[flat_image > 0]
     yy = yy[flat_image > 0]
+    # print(xx, yy)
+    # print('_____________________________________________________________')
     dict_ = average_height(xx, yy)
     hor = []; ver = []
+    # print(dict_)
     for key in dict_.keys():
         val = dict_[key]
         hor.append(key)
-        ver.append(200 - round(sum(val)/len(val), 4))
-    hor , ver = quantize(hor, ver)
+        ver.append(69 - round(sum(val)/len(val), 3))
     hor, ver = np.array(hor), np.array(ver)
-    return hor, ver
+    # print(hor, ver)
+    plot = visualize_profile(hor.astype('int'), ver.astype('int'))
+    # hor , ver = quantize(hor, ver)
+    return hor, ver, plot
+
+def visualize_profile(hor, ver):
+    s_map = np.zeros((70,200))
+    s_map[69-ver, hor] = 255
+    # cv2.waitKey(0)
+    return s_map
 
 def quantize(hor, ver):
     hor_split = np.array_split(hor, 30)
     ver_split = np.array_split(ver, 30)
     hor_avg = []
     ver_avg = []
-    print(len(hor_split), len(ver_split))
+    # print(len(hor_split), len(ver_split))
     for i in range(30):
         hor_avg.append(np.mean(hor_split[i]))
         ver_avg.append(np.mean(ver_split[i]))
         continue
     # print(ver_avg)
-    return hor_avg, ver_avg
+    return np.array(hor_avg), np.array(ver_avg)
 
 def average_height(xx, yy):
     dict_ = {}
     xx = xx.astype('float')
-    yy = yy.astype('float')
+    # yy = yy.astype('float')
     for i in range(len(yy)):
         key = yy[i]
         if key in dict_:
@@ -74,7 +92,8 @@ def average_height(xx, yy):
     return dict_
 
 def compute_slope(hor, ver):
-    slope = (ver[1:].astype('float') - ver[:-1].astype('float'))/(hor[1:] - hor[:-1] + 1)
+    # print(hor, ver)
+    slope = (ver[1:] - ver[:-1])/(hor[1:] - hor[:-1]+1)
     return slope
 
 def sort_increasing(array):
@@ -84,17 +103,24 @@ def determine_characteristics(path):
     plt.figure()
     for file_ in os.listdir(path):
         img = cv2.imread(path+file_,  cv2.IMREAD_GRAYSCALE)
-        compute(img)
-        hor, ver = compute(img)
+        img[img > 200] = 255
+        img[img < 50] = 0
+        hor, ver, plot = compute(img)
         slope = compute_slope(hor, ver)
-        slope[slope > 0.1] = 0.3
-        slope[slope < -0.1] = -0.3
+        print(slope)
+        # slope[slope > 0.02] = 0.3
+        # slope[slope < -0.02] = -0.3
+        # slope[abs(slope) < 0.02] = 0
         plt.clf()
+        # # plt.plot(hor, ver)
         plt.plot(slope)
         plt.show()
-        plt.savefig('../slopes/' + file_)
+        # plt.savefig('../slopes/' + file_)
         plt.pause(0.2)
+        img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
+        # plot = cv2.resize(plot, (1000, 350), interpolation = cv2.INTER_AREA) 
         cv2.imshow('Window 1', img)
+        # cv2.imshow('Window 2', plot)
         cv2.waitKey(0)
 
 if __name__ == '__main__':

@@ -41,6 +41,7 @@ def cloud_sub_callback(msg):
     transformed_xyz = transform_cloud(xyz, H)
     mean_xyz = np.mean(transformed_xyz, axis = 0)
     transformed_xyz -= mean_xyz
+    
     # publish_transformed_cloud(transformed_xyz,1)
     # Finding the wheel's pose w.r.t the robot's base_link
     try:
@@ -71,20 +72,19 @@ def cloud_sub_callback(msg):
     transformed_xyz = transform_cloud(transformed_xyz, H)
     transformed_xyz[:,0] -= np.amin(transformed_xyz[:,0])
     publish_transformed_cloud(transformed_xyz,0)
+    # print(max(transformed_xyz[:,1]))
+    # print(min(transformed_xyz[:,1]))
     intervals = estimate.slice_points(transformed_xyz)
     maps_list = [None]*(len(intervals)-1)
     for i in range(len(intervals)-1):
         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
-        maps_list[i] = estimate.project_section(section)
-        # maps_list[i] = cv2.cvtColor(maps_list[i], cv2.COLOR_BGR2GRAY)
-        cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', maps_list[i]*255)
-        # print(i)
-        # if idx%5 == 0:
-        #     publish_transformed_cloud(section,0)
-        #     plt.imshow(maps_list[i], cmap = 'gray')
-        #     plt.pause(0.002)
-        #     break
+        s_map = estimate.project_section(section, idx, i)
+        # plt.imshow(maps_list[i], 'gray')
+        # plt.savefig('../slices/bag_1/section_' + str(i) + '_index_' + str(idx))
+        cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', s_map)
+
         
+
     print("Frame index is {}".format(idx))
     # print("Mean is {}".format(mean_z))
     idx += 1
