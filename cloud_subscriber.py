@@ -76,14 +76,14 @@ def cloud_sub_callback(msg):
     # print(min(transformed_xyz[:,1]))
     intervals = estimate.slice_points(transformed_xyz)
     maps_list = [None]*(len(intervals)-1)
-    for i in range(len(intervals)-1):
-        section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
-        s_map = estimate.project_section(section, idx, i)
-        # plt.imshow(maps_list[i], 'gray')
-        # plt.savefig('../slices/bag_1/section_' + str(i) + '_index_' + str(idx))
-        cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', s_map)
-
-        
+    print(euler_angles[1])
+    if euler_angles[1] != 0:
+        for i in range(len(intervals)-1):
+            section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
+            s_map = estimate.project_section(section, idx, i)
+            # plt.imshow(maps_list[i], 'gray')
+            # plt.savefig('../slices/bag_1/section_' + str(i) + '_index_' + str(idx))
+            cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', s_map)
 
     print("Frame index is {}".format(idx))
     # print("Mean is {}".format(mean_z))

@@ -25,14 +25,10 @@ def project_section(section, idx, i):
     z_co -= np.amin(z_co)
     unique, counts = np.unique(y_co,return_counts = True)
     dict_ = {element: round(np.mean(z_co[y_co == element])) for element in unique}
-    # print(dict_)
-    print('_________________________________________________________')
     row = np.array(dict_.values()).astype('int')
     column = np.array(dict_.keys()).astype('int')
     s_map = np.zeros((70,200)).astype('int')
     s_map[69-row, 199-column] = 255
-    # plt.clf()
-    print(s_map)
     return s_map
 
 def compute(image):
@@ -40,22 +36,16 @@ def compute(image):
     xx, yy = np.meshgrid(row, column)
     xx = xx.flatten('F')
     yy = yy.flatten('F')
-    # print(xx, yy)
     flat_image = image.flatten()
-    # print(flat_image)
     xx = xx[flat_image > 0]
     yy = yy[flat_image > 0]
-    # print(xx, yy)
-    # print('_____________________________________________________________')
     dict_ = average_height(xx, yy)
     hor = []; ver = []
-    # print(dict_)
     for key in dict_.keys():
         val = dict_[key]
         hor.append(key)
         ver.append(69 - round(sum(val)/len(val), 3))
     hor, ver = np.array(hor), np.array(ver)
-    # print(hor, ver)
     plot = visualize_profile(hor.astype('int'), ver.astype('int'))
     # hor , ver = quantize(hor, ver)
     return hor, ver, plot
@@ -63,7 +53,6 @@ def compute(image):
 def visualize_profile(hor, ver):
     s_map = np.zeros((70,200))
     s_map[69-ver, hor] = 255
-    # cv2.waitKey(0)
     return s_map
 
 def quantize(hor, ver):
@@ -71,7 +60,6 @@ def quantize(hor, ver):
     ver_split = np.array_split(ver, 30)
     hor_avg = []
     ver_avg = []
-    # print(len(hor_split), len(ver_split))
     for i in range(30):
         hor_avg.append(np.mean(hor_split[i]))
         ver_avg.append(np.mean(ver_split[i]))
@@ -92,7 +80,6 @@ def average_height(xx, yy):
     return dict_
 
 def compute_slope(hor, ver):
-    # print(hor, ver)
     slope = (ver[1:] - ver[:-1])/(hor[1:] - hor[:-1]+1)
     return slope
 
@@ -108,18 +95,14 @@ def determine_characteristics(path):
         hor, ver, plot = compute(img)
         slope = compute_slope(hor, ver)
         print(slope)
-        # slope[slope > 0.02] = 0.3
-        # slope[slope < -0.02] = -0.3
-        # slope[abs(slope) < 0.02] = 0
         plt.clf()
         # # plt.plot(hor, ver)
         plt.plot(slope)
         plt.show()
-        # plt.savefig('../slopes/' + file_)
         plt.pause(0.2)
         img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
-        # plot = cv2.resize(plot, (1000, 350), interpolation = cv2.INTER_AREA) 
         cv2.imshow('Window 1', img)
+        # plot = cv2.resize(plot, (1000, 350), interpolation = cv2.INTER_AREA) 
         # cv2.imshow('Window 2', plot)
         cv2.waitKey(0)
 
