@@ -48,14 +48,13 @@ def average_height(xx, yy):
             dict_[key] = [xx[i]]
     return dict_
 
-def visualize_transition(slope):
+def get_transition(slope):
     transition = []
     flag = True
     val = float('inf')
     for i in range(len(slope)-1):
         if slope[i]*slope[i+1] < 0:
             transition.append(i+1)
-            # flag = True
             if slope[i] < 0:
                 val = slope[i+1]
         elif slope[i] == 0:
@@ -75,22 +74,22 @@ def determine_characteristics(path):
         hor, ver = compute(img)
         slope = compute_slope(hor, ver)
         # slope = compute_slope(np.arange(len(slope)), np.array(slope))
-        transition = visualize_transition(slope)
+        transition = get_transition(slope)
         points = zip(hor[transition], ver[transition])
-        transition = np.array(transition)
         plt.clf()
         plt.plot(slope)
-        plt.scatter(transition-1, slope[transition-1])
+        plt.scatter(transition, slope[transition])
+        plt.savefig('../slopes/' + file_)
         plt.show(); plt.pause(0.2)
         img = np.dstack((img,img,img))
         for pt in points:
             img = cv2.circle(img, (int(pt[0]), 69 - int(pt[1])), 1, (255,0,0), 2) 
             print(int(pt[0]), int(pt[1]))
         img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
-        cv2.imwrite('../transition/' +file_, img)
+        cv2.imwrite('../transition/' + file_, img)
         cv2.imshow('Window 1', img)
-        
         cv2.waitKey(0)
+    return points
 
 if __name__ == '__main__':
     file_path = '../slices/best/'
