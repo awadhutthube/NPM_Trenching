@@ -31,6 +31,7 @@ def fit_line(pt1, pt2):
 
 def draw_line(img, pt1, pt2, i):
     color = ((255,0,0), (0,255,0), (0,0,255))
+    print(img.shape)
     img = cv2.line(img, pt1, pt2, color[i%3], 1)
     return img
 
@@ -53,21 +54,6 @@ def get_intercepts(line):
                 pts.append((x, int(y_int)))
         print(pts)
         return pts[0], pts[1]
-
-# def get_intercepts(line):
-#     m = line[0]
-#     c = line[2]
-#     print('Slope is {}'.format(m))
-#     if m != 0:
-#         x_int = int(round(-c/m))
-#         y_int = int(round(c))
-#         print('x Intercept is {}'.format(x_int))
-#         print('y Intercept is {}'.format(y_int))
-#         return (x_int, 0), (0, y_int)
-#     else:
-#         y_int = int(c)
-#         print('y Intercept is {}'.format(y_int))
-#         return (0, y_int), (199, y_int)
 
 if __name__ == '__main__':
     file_path = '../slices/best/'

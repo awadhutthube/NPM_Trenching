@@ -14,7 +14,7 @@ import tf
 import sys
 import estimate
 import time
-
+import fit_line as fl
 
 # Non-blocking visualization of images
 plt.ion()
@@ -72,18 +72,44 @@ def cloud_sub_callback(msg):
     transformed_xyz = transform_cloud(transformed_xyz, H)
     transformed_xyz[:,0] -= np.amin(transformed_xyz[:,0])
     publish_transformed_cloud(transformed_xyz,0)
-    # print(max(transformed_xyz[:,1]))
-    # print(min(transformed_xyz[:,1]))
+
     intervals = estimate.slice_points(transformed_xyz)
     maps_list = [None]*(len(intervals)-1)
     print(euler_angles[1])
-    if euler_angles[1] != 0:
-        for i in range(len(intervals)-1):
-            section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
-            s_map = estimate.project_section(section, idx, i)
-            # plt.imshow(maps_list[i], 'gray')
-            # plt.savefig('../slices/bag_1/section_' + str(i) + '_index_' + str(idx))
-            cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', s_map)
+
+    for i in range(len(intervals)-1):
+        section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
+        img1 = estimate.project_section(section, idx, i)
+        points, x_co, y_co = fl.get_transition_points(img1)
+        points.insert(0, (int(x_co[0]), int(69-y_co[0])))
+        print(x_co[-1] , 69-y_co[-1])
+        points.append(((int(x_co[-1]), int(69-y_co[-1]))))
+        print('length : ', len(points))
+        if len(points) != 6:
+            continue
+        img1 = np.dstack((img1, img1, img1))
+        img1 = img1.astype(np.uint8)
+        for i in range(len(points)-1):
+            print("Points are {} {}".format(points[i], points[i+1]))
+            # img = cv2.circle(img, (int(points[i][0]), int(points[i][1])), 1, (255,0,0), 1)
+            # img = cv2.circle(img, (int(points[i+1][0]), int(points[i+1][1])), 1, (255,0,0), 1)
+            line = fl.fit_line(points[i], points[i+1])
+            pt1, pt2 = fl.get_intercepts(line)
+            # img1 = fl.draw_line(img1.copy(), pt1, pt2, i)
+            img1 = fl.draw_line(img1, points[i], points[i+1], i)
+            print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
+        
+        img1 = cv2.resize(img1, (600, 210), interpolation = cv2.INTER_AREA)
+        cv2.imshow('Window 1', img1)
+        cv2.waitKey(1)
+
+    # if euler_angles[1] != 0:
+    #     for i in range(len(intervals)-1):
+    #         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
+    #         s_map = estimate.project_section(section, idx, i)
+    #         # plt.imshow(maps_list[i], 'gray')
+    #         # plt.savefig('../slices/bag_1/section_' + str(i) + '_index_' + str(idx))
+    #         cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', s_map)
 
     print("Frame index is {}".format(idx))
     # print("Mean is {}".format(mean_z))
