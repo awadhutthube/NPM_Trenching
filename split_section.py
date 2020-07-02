@@ -10,6 +10,10 @@ def compute_slope(hor, ver):
     return slope
 
 def compute(image):
+    '''
+    Returns coordinates of points in 2D cross section of a slice
+    Input: PxQ array of representing the map or 2D profile
+    '''
     row, column = np.arange(image.shape[0]), np.arange(image.shape[1])
     xx, yy = np.meshgrid(row, column)
     xx = xx.flatten('F')
@@ -49,6 +53,11 @@ def average_height(xx, yy):
     return dict_
 
 def get_transition(slope):
+    '''
+    Compute transitions points for portions of the 2D section
+    Input: Array containing slope at each point on the 2D section
+    Output: Points where the section changes
+    '''
     transition = []
     flag = True
     val = float('inf')

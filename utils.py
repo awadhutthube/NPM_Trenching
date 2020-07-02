@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rospy
 import cv2
-
+import fit_line as fl
 
 def get_transformation_matrix(tvec, quat):
     transformation_matrix = np.eye(4)
@@ -101,3 +101,17 @@ def get_trench_threshold(hist_data, hist_bins):
     max_idx = np.argmax(hist_data)
     threshold = hist_bins[max_idx]
     return threshold
+
+def visualize_section_lines(points, img1):
+    img1 = np.dstack((img1, img1, img1))
+    img1 = img1.astype(np.uint8)
+        
+    for i in range(len(points)-1):
+        line = fl.fit_line(points[i], points[i+1])
+        pt1, pt2 = fl.get_intercepts(line)
+        img1 = fl.draw_line(img1, points[i], points[i+1], i)
+        # img1 = fl.draw_line(img1.copy(), pt1, pt2, i)
+        img1 = cv2.resize(img1, (600, 210), interpolation = cv2.INTER_AREA)
+        cv2.imshow('Window 1', img1)
+        cv2.waitKey(1)
+    return img1

@@ -5,7 +5,11 @@ import matplotlib.pyplot as plt
 
 plt.ion()
 def slice_points(cloud_array, n_slices = 5):
-    # slices = np.split(cloud_array, n_slices, axis = 0)
+    '''
+    Returns the boundary x-coordinates of cloud slices
+    Input: Nx3 array of points in cloud
+    Output: Total number of slices of the point cloud
+    '''
     max_val = np.amax(cloud_array[:,0])
     min_val = np.amin(cloud_array[:,0])
     jump = (max_val - min_val)/n_slices
@@ -13,11 +17,24 @@ def slice_points(cloud_array, n_slices = 5):
     return slice_points
 
 def get_section(cloud_array, low_bound, high_bound):
+    '''
+    Returns points in a particular slice of the point cloud
+    Input: Nx3 array of points in cloud
+           Lower x coordinate of slice
+           Upper x coordinate of slice
+    Output: Mx3 array of points in slice
+    '''
     section = cloud_array[cloud_array[:,0] >= low_bound]
     section = section[section[:,0] < high_bound]
     return section
 
 def project_section(section, idx, i):
+    '''
+    Project a cloud slice onto the y-z plane
+    Input: Mx3 array of points in one slice
+           (idx, i) utility variables for debugging
+    Output: 2D projection of points on the y-z plane (represents cross section of cloud)
+    '''
     section = sort_increasing(section)
     y_co = (section[:,1]*1000).round().astype('int')
     z_co = (section[:,2]*1000).round().astype('int')
@@ -32,6 +49,10 @@ def project_section(section, idx, i):
     return s_map
 
 def compute(image):
+    '''
+    Returns coordinates of points in 2D cross section of a slice
+    Input: PxQ array of representing the map or 2D profile
+    '''
     row, column = np.arange(image.shape[0]), np.arange(image.shape[1])
     xx, yy = np.meshgrid(row, column)
     xx = xx.flatten('F')
@@ -64,7 +85,6 @@ def quantize(hor, ver):
         hor_avg.append(np.mean(hor_split[i]))
         ver_avg.append(np.mean(ver_split[i]))
         continue
-    # print(ver_avg)
     return np.array(hor_avg), np.array(ver_avg)
 
 def average_height(xx, yy):

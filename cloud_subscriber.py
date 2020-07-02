@@ -19,21 +19,19 @@ import fit_line as fl
 # Non-blocking visualization of images
 plt.ion()
 
-
 # Creating publisher objects
 pub1 = rospy.Publisher('/cloud_transformed', PointCloud2, queue_size=5)
 pub2 = rospy.Publisher('/cloud_original', PointCloud2, queue_size=5)
-
 
 # Initialization of constants and utility variables
 idx = 0
 tvec = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688]
 quat = [0.9378418721923328, 0.1422734925170896, -0.04777733124311015, -0.31293482182246196]
 mean_array = []
-
+num_slices = 5
 
 def cloud_sub_callback(msg):
-    global idx, mean_array
+    global idx, mean_array, num_slices
     xyz = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg, remove_nans=True)
         
     # Transforming cloud into map frame and normalizing for 0 mean
@@ -73,49 +71,33 @@ def cloud_sub_callback(msg):
     transformed_xyz[:,0] -= np.amin(transformed_xyz[:,0])
     publish_transformed_cloud(transformed_xyz,0)
 
-    intervals = estimate.slice_points(transformed_xyz)
-    maps_list = [None]*(len(intervals)-1)
-    print(euler_angles[1])
+    intervals = estimate.slice_points(transformed_xyz, num_slices)
 
-    for i in range(len(intervals)-1):
+    boolean_list = [False]*num_slices
+    feature_list = [None]*num_slices
+
+    for i in range(num_slices):
         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
         img1 = estimate.project_section(section, idx, i)
-        points, x_co, y_co = fl.get_transition_points(img1)
-        points.insert(0, (int(x_co[0]), int(69-y_co[0])))
-        print(x_co[-1] , 69-y_co[-1])
-        points.append(((int(x_co[-1]), int(69-y_co[-1]))))
-        print('length : ', len(points))
+        points, x_co, y_co = fl.get_transition_points(img1)        
         if len(points) != 6:
             continue
-        img1 = np.dstack((img1, img1, img1))
-        img1 = img1.astype(np.uint8)
-        for i in range(len(points)-1):
-            print("Points are {} {}".format(points[i], points[i+1]))
-            # img = cv2.circle(img, (int(points[i][0]), int(points[i][1])), 1, (255,0,0), 1)
-            # img = cv2.circle(img, (int(points[i+1][0]), int(points[i+1][1])), 1, (255,0,0), 1)
-            line = fl.fit_line(points[i], points[i+1])
-            pt1, pt2 = fl.get_intercepts(line)
-            # img1 = fl.draw_line(img1.copy(), pt1, pt2, i)
-            img1 = fl.draw_line(img1, points[i], points[i+1], i)
-            print("+++++++++++++++++++++++++++++++++++++++++++++++++++")
-        
-        img1 = cv2.resize(img1, (600, 210), interpolation = cv2.INTER_AREA)
-        cv2.imshow('Window 1', img1)
-        cv2.waitKey(1)
 
-    # if euler_angles[1] != 0:
-    #     for i in range(len(intervals)-1):
-    #         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
-    #         s_map = estimate.project_section(section, idx, i)
-    #         # plt.imshow(maps_list[i], 'gray')
-    #         # plt.savefig('../slices/bag_1/section_' + str(i) + '_index_' + str(idx))
-    #         cv2.imwrite('../slices/bag_1/section_' + str(i) + '_index_' + str(idx) + '.jpg', s_map)
+        feature_list[i] = fl.compute_features(points)
+        boolean_list[i] = True
+
+        img1 = utils.visualize_section_lines(points, img1)
+    
 
     print("Frame index is {}".format(idx))
-    # print("Mean is {}".format(mean_z))
+    print('Bool Array = {}'.format(boolean_list))
+    print('Feature Array = {}'.format(feature_list))
+    print('-------------------------------------------')
     idx += 1
     return
 
+def publish_feature_msg():
+    return
 
 def plot_graph(array):
     plt.plot(array)
@@ -124,8 +106,15 @@ def plot_graph(array):
     plt.savefig('../plots/bag_4')
     return
 
-
 def generate_heightmap(points, threshold, dim = 500, mask = False):
+    '''
+    Create a 2D representation of the point cloud
+    Input: Nx3 array of points in cloud
+           Value of threshold (debugging purposes)
+           Dimension of 2D image
+           Mask Variable (debugging purposes)
+    Output: 2D image of size (dim x dim) representing the point cloud data
+    '''
     heightmap = np.zeros((dim,dim,3)).astype('float')
     x_co, y_co, z_co = utils.discretize(points)
     x_co -= np.amin(x_co)
@@ -143,8 +132,10 @@ def generate_heightmap(points, threshold, dim = 500, mask = False):
         heightmap[masked_x_co, masked_y_co, 1] = 1    
     return heightmap, threshold
 
-
-def publish_transformed_cloud(cloud_array, c, flag = True):
+def publish_transformed_cloud(cloud_array, c, flag = True):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+    '''
+    Publishes pointcloud w.r.t base_link
+    '''
     header = std_msgs.msg.Header()
     header.stamp = rospy.Time.now()
     header.frame_id = 'base_link'
@@ -160,8 +151,12 @@ def publish_transformed_cloud(cloud_array, c, flag = True):
             pub2.publish(cloud)
     return
 
-
 def transform_cloud(cloud_array, transformation_matrix = np.eye(4)):
+    '''
+    Transforms all points in a cloud given a transformation matrix
+    Input: Nx3 array of points in cloud
+    Output: Nx3 array of transformed points
+    '''
     if cloud_array.shape[0] > cloud_array.shape[1]:
         homogenious_coordinates = np.vstack((cloud_array.T, np.ones(cloud_array.shape[0])))
     else:
@@ -169,7 +164,6 @@ def transform_cloud(cloud_array, transformation_matrix = np.eye(4)):
 
     transformed_cloud = np.matmul(transformation_matrix, homogenious_coordinates)
     return transformed_cloud[:3,:].T
-
 
 if __name__ == '__main__':
     rospy.init_node('cloud_processing_node')
