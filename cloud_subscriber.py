@@ -11,6 +11,10 @@ import utils
 import wheel_boundary as wb
 import copy
 import tf
+import sys
+import estimate
+import time
+import fit_line as fl
 
 # Non-blocking visualization of images
 plt.ion()
@@ -23,24 +27,11 @@ pub2 = rospy.Publisher('/cloud_original', PointCloud2, queue_size=5)
 idx = 0
 tvec = [-0.16927510039335014, -0.3717676310584948, -0.0332700755223688]
 quat = [0.9378418721923328, 0.1422734925170896, -0.04777733124311015, -0.31293482182246196]
-
-
-def generate_histogram(datapoints, frame_idx, start = -0.03, end = 0.08, interval_size = 0.0005, draw = False):
-    num = (end-start)//interval_size
-    bin_sequence = np.linspace(start, end, num)
-    if draw:    
-        data, bins = utils.visualize_histogram(datapoints, bin_sequence, frame_idx)
-    else:
-        data, bins = np.histogram(datapoints, bin_sequence) 
-    return data, bins
-    
-def get_trench_threshold(hist_data, hist_bins):
-    max_idx = np.argmax(hist_data)
-    threshold = hist_bins[max_idx]
-    return threshold
+mean_array = []
+num_slices = 5
 
 def cloud_sub_callback(msg):
-    global idx
+    global idx, mean_array, num_slices
     xyz = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg, remove_nans=True)
         
     # Transforming cloud into map frame and normalizing for 0 mean
@@ -48,7 +39,8 @@ def cloud_sub_callback(msg):
     transformed_xyz = transform_cloud(xyz, H)
     mean_xyz = np.mean(transformed_xyz, axis = 0)
     transformed_xyz -= mean_xyz
-
+    
+    # publish_transformed_cloud(transformed_xyz,1)
     # Finding the wheel's pose w.r.t the robot's base_link
     try:
         (trans,rot) = tf_tree.lookupTransform('base_link', 'RR', rospy.Time(0))
@@ -66,20 +58,63 @@ def cloud_sub_callback(msg):
     heightmap, trench_thresh = generate_heightmap(transformed_xyz.copy(), 0, mask = False)
 
     # Segmenting the trench using equations of lines passing through the wheel's frame
-    line1, line2 = wb.fit_line(trans, euler_angles[1]+90)
-    bool_array = wb.check_side(transformed_xyz.copy(), line1, line2)
+    line1, line2, line3 = wb.fit_line(trans, euler_angles[1], idx)
+    bool_array = wb.check_side(transformed_xyz.copy(), line1, line2, line3)
     heightmap = utils.mask_heightmap(transformed_xyz, bool_array, heightmap)
-    
-    # Visualizing and saving the heightmaps
-    utils.visualize_heightmap(heightmap, idx)        
 
     # Publishing the segmented cloud and logging essential data
-    transformed_xyz = transformed_xyz[bool_array < 0]
-    publish_transformed_cloud(transformed_xyz)
+    transformed_xyz = transformed_xyz[bool_array == 1]
+    transformed_xyz -= np.mean(transformed_xyz, axis = 0)
+    z_quat = utils.quaternion_from_euler([0,0, np.pi*euler_angles[1]/180])
+    H = utils.get_transformation_matrix(np.zeros(3), z_quat)
+    transformed_xyz = transform_cloud(transformed_xyz, H)
+    transformed_xyz[:,0] -= np.amin(transformed_xyz[:,0])
+    publish_transformed_cloud(transformed_xyz,0)
+
+    intervals = estimate.slice_points(transformed_xyz, num_slices)
+
+    boolean_list = [False]*num_slices
+    feature_list = [None]*num_slices
+
+    for i in range(num_slices):
+        section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
+        img1 = estimate.project_section(section, idx, i)
+        points, x_co, y_co = fl.get_transition_points(img1)        
+        if len(points) != 6:
+            continue
+
+        feature_list[i] = fl.compute_features(points)
+        boolean_list[i] = True
+
+        img1 = utils.visualize_section_lines(points, img1)
+    
+
+    print("Frame index is {}".format(idx))
+    print('Bool Array = {}'.format(boolean_list))
+    print('Feature Array = {}'.format(feature_list))
+    print('-------------------------------------------')
     idx += 1
     return
 
+def publish_feature_msg():
+    return
+
+def plot_graph(array):
+    plt.plot(array)
+    plt.show()
+    plt.pause(0.5)
+    plt.savefig('../plots/bag_4')
+    return
+
 def generate_heightmap(points, threshold, dim = 500, mask = False):
+    '''
+    Create a 2D representation of the point cloud
+    Input: Nx3 array of points in cloud
+           Value of threshold (debugging purposes)
+           Dimension of 2D image
+           Mask Variable (debugging purposes)
+    Output: 2D image of size (dim x dim) representing the point cloud data
+    '''
     heightmap = np.zeros((dim,dim,3)).astype('float')
     x_co, y_co, z_co = utils.discretize(points)
     x_co -= np.amin(x_co)
@@ -97,7 +132,10 @@ def generate_heightmap(points, threshold, dim = 500, mask = False):
         heightmap[masked_x_co, masked_y_co, 1] = 1    
     return heightmap, threshold
 
-def publish_transformed_cloud(cloud_array, flag = True):
+def publish_transformed_cloud(cloud_array, c, flag = True):                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
+    '''
+    Publishes pointcloud w.r.t base_link
+    '''
     header = std_msgs.msg.Header()
     header.stamp = rospy.Time.now()
     header.frame_id = 'base_link'
@@ -107,10 +145,18 @@ def publish_transformed_cloud(cloud_array, flag = True):
         pub2.publish(cloud)
     else:
         cloud = pcl2.create_cloud_xyz32(header,cloud_array)
-        pub1.publish(cloud)
+        if c == 0:
+            pub1.publish(cloud)
+        else:
+            pub2.publish(cloud)
     return
 
 def transform_cloud(cloud_array, transformation_matrix = np.eye(4)):
+    '''
+    Transforms all points in a cloud given a transformation matrix
+    Input: Nx3 array of points in cloud
+    Output: Nx3 array of transformed points
+    '''
     if cloud_array.shape[0] > cloud_array.shape[1]:
         homogenious_coordinates = np.vstack((cloud_array.T, np.ones(cloud_array.shape[0])))
     else:
