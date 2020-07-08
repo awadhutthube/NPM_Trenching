@@ -24,7 +24,7 @@ plt.ion()
 # Creating publisher objects
 pub1 = rospy.Publisher('/cloud_transformed', PointCloud2, queue_size=5)
 pub2 = rospy.Publisher('/cloud_original', PointCloud2, queue_size=5)
-feature_pub = rospy.Publisher('/features', fa, queue_size=5)
+feature_pub = rospy.Publisher('/trench_features', fa, queue_size=5)
 
 # Initialization of constants and utility variables
 idx = 0
@@ -85,7 +85,7 @@ def cloud_sub_callback(msg):
     for i in range(num_slices):
         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
         img1 = estimate.project_section(section, idx, i)
-        cv2.imwrite('../slices/bag_2/slice{}img{}.jpg'.format(i,idx), img1)
+        cv2.imwrite('../output/slices/bag_24/slice{}img{}.jpg'.format(i,idx), img1)
         points, x_co, y_co = fl.get_transition_points(img1)        
         if len(points) != 6:
             continue
@@ -97,8 +97,8 @@ def cloud_sub_callback(msg):
     
     publish_feature_msg(feature_list, boolean_list)
     print("Frame index is {}".format(idx))
-    print('Bool Array = {}'.format(boolean_list))
-    print('Feature Array = {}'.format(feature_list))
+    # print('Bool Array = {}'.format(boolean_list))
+    # print('Feature Array = {}'.format(feature_list))
     print('-------------------------------------------')
     idx += 1
     return

@@ -56,11 +56,11 @@ def get_intercepts(line):
 def compute_features(points, x_co, y_co):
     x_co = np.array(x_co)
     y_co - np.array(y_co)
-    points = np.array(points)
+    points = np.array(points).astype('float')
 
     p1, p2, p3, p4, p5, p6 = points
     if p3[0] != p2[0]:
-        slope1 = (p3[1]-p2[1])/(p3[0]-p2[0])
+        slope1 = (p2[1]-p3[1])/(p2[0]-p3[0])
     else:
         slope1 = float('inf')
     
@@ -94,7 +94,7 @@ def compute_features(points, x_co, y_co):
 
 
 if __name__ == '__main__':
-    file_path = '../slices/bag_1/'
+    file_path = '../output/slices/bag_3/'
     for file_ in os.listdir(file_path):
         img1 = cv2.imread(file_path + file_, cv2.IMREAD_GRAYSCALE)
         img2 = cv2.imread(file_path + file_, cv2.IMREAD_GRAYSCALE)
@@ -119,7 +119,7 @@ if __name__ == '__main__':
             img2 = cv2.resize(img2, (600, 210), interpolation = cv2.INTER_AREA)
             img = np.concatenate((img1, img2))
             print(file_)
-            cv2.imwrite('../lines/bag_1/' + file_, img2)
+            cv2.imwrite('../output/lines/bag_3/' + file_, img2)
             # cv2.imshow('Window 1', img)
             # # cv2.imshow('Window 2', img2)
             # cv2.waitKey(0)

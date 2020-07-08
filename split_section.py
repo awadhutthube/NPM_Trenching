@@ -33,8 +33,8 @@ def compute(image):
     return hor, ver
 
 def quantize(hor, ver):
-    hor_split = np.array_split(hor, 20)
-    ver_split = np.array_split(ver, 20)
+    hor_split = np.array_split(hor, 35)
+    ver_split = np.array_split(ver, 35)
     hor_avg = []; ver_avg = []
     for i in range(len(hor_split)):
         hor_avg.append(np.mean(hor_split[i]))
@@ -86,15 +86,18 @@ def get_transition(slope):
     mark = False
     val = float('inf')
     # print(slope)
-    for i in range(len(slope)-1):
+    for i in range(len(slope)-2):
         if abs(slope[i]) >= 0.3 and flag:
             transition.append(i)
             flag = False
             mark = True
         elif abs(slope[i]) < 0.3 and mark:
             mark = False
-            flag = True
-            transition.append(i)
+            if abs(slope[i+2]) < 0.3:
+                transition.append(i)
+                flag = True
+            else:
+                transition.append(i+1)
         # elif slope[i] - val > 0.3:
         #     transition.append(i)
         #     val = float('inf')
@@ -102,7 +105,7 @@ def get_transition(slope):
 
 
 def determine_characteristics(path):
-    plt.figure()
+    # plt.figure()
     for file_ in os.listdir(path):
         img = cv2.imread(path+file_,  cv2.IMREAD_GRAYSCALE)
         img[img > 200] = 255
@@ -117,17 +120,23 @@ def determine_characteristics(path):
         # plt.scatter(transition, slope[transition])
         # plt.savefig('../slopes/' + file_)
         # plt.show(); plt.pause(0.2)
+        img = np.dstack((img,img,img))
         if len(points) == 4:
-            img = np.dstack((img,img,img))
             for pt in points:
                 img = cv2.circle(img, (int(pt[0]), 69 - int(pt[1])), 1, (255,0,0), 2) 
-                print(int(pt[0]), int(pt[1]))
             img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
-            cv2.imwrite('../transition/bag_3/' + file_, img)
-            # cv2.imshow('Window 1', img)
-            # cv2.waitKey(0)
+            # cv2.imwrite('../transition/bag_3/' + file_, img)
+        # else:
+        #     for pt in points:
+        #         img = cv2.circle(img, (int(pt[0]), 69 - int(pt[1])), 1, (0,0, 255), 2) 
+        #     img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
+        
+            cv2.imwrite('../output/transition/bag_3/' + file_, img)
+
+        # cv2.imshow('Window 1', img)
+        # cv2.waitKey(0)
     return points
 
 if __name__ == '__main__':
-    file_path = '../slices/bag_3/'
+    file_path = '../output/slices/bag_3/'
     determine_characteristics(file_path)
