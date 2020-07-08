@@ -52,6 +52,29 @@ def average_height(xx, yy):
             dict_[key] = [xx[i]]
     return dict_
 
+# def get_transition(slope):
+#     '''
+#     Compute transitions points for portions of the 2D section
+#     Input: Array containing slope at each point on the 2D section
+#     Output: Points where the section changes
+#     '''
+#     transition = []
+#     flag = True
+#     val = float('inf')
+#     print(slope)
+#     for i in range(len(slope)-1):
+#         if slope[i]*slope[i+1] < 0:
+#             transition.append(i)
+#             if slope[i] < 0:
+#                 val = slope[i+1]
+#         elif slope[i] == 0:
+#             val = 0
+#             transition.append(i)
+#         elif slope[i] - val > 0.3:
+#             transition.append(i)
+#             val = float('inf')
+#     return transition
+
 def get_transition(slope):
     '''
     Compute transitions points for portions of the 2D section
@@ -60,19 +83,23 @@ def get_transition(slope):
     '''
     transition = []
     flag = True
+    mark = False
     val = float('inf')
+    # print(slope)
     for i in range(len(slope)-1):
-        if slope[i]*slope[i+1] < 0:
-            transition.append(i+1)
-            if slope[i] < 0:
-                val = slope[i+1]
-        elif slope[i] == 0:
-            val = 0
+        if abs(slope[i]) >= 0.3 and flag:
             transition.append(i)
-        elif slope[i] - val > 0.3:
+            flag = False
+            mark = True
+        elif abs(slope[i]) < 0.3 and mark:
+            mark = False
+            flag = True
             transition.append(i)
-            val = float('inf')
+        # elif slope[i] - val > 0.3:
+        #     transition.append(i)
+        #     val = float('inf')
     return transition
+
 
 def determine_characteristics(path):
     plt.figure()
@@ -85,21 +112,22 @@ def determine_characteristics(path):
         # slope = compute_slope(np.arange(len(slope)), np.array(slope))
         transition = get_transition(slope)
         points = zip(hor[transition], ver[transition])
-        plt.clf()
-        plt.plot(slope)
-        plt.scatter(transition, slope[transition])
-        plt.savefig('../slopes/' + file_)
-        plt.show(); plt.pause(0.2)
-        img = np.dstack((img,img,img))
-        for pt in points:
-            img = cv2.circle(img, (int(pt[0]), 69 - int(pt[1])), 1, (255,0,0), 2) 
-            print(int(pt[0]), int(pt[1]))
-        img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
-        cv2.imwrite('../transition/' + file_, img)
-        cv2.imshow('Window 1', img)
-        cv2.waitKey(0)
+        # plt.clf()
+        # plt.plot(slope)
+        # plt.scatter(transition, slope[transition])
+        # plt.savefig('../slopes/' + file_)
+        # plt.show(); plt.pause(0.2)
+        if len(points) == 4:
+            img = np.dstack((img,img,img))
+            for pt in points:
+                img = cv2.circle(img, (int(pt[0]), 69 - int(pt[1])), 1, (255,0,0), 2) 
+                print(int(pt[0]), int(pt[1]))
+            img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
+            cv2.imwrite('../transition/bag_3/' + file_, img)
+            # cv2.imshow('Window 1', img)
+            # cv2.waitKey(0)
     return points
 
 if __name__ == '__main__':
-    file_path = '../slices/best/'
+    file_path = '../slices/bag_3/'
     determine_characteristics(file_path)

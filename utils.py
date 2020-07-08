@@ -33,7 +33,9 @@ def publish_threshold_frame(threshold):
 
 
 def visualize_heightmap(heightmap, number = None):
-    cv2.imwrite('../heightmaps/bag_24/frame_' + str(number) + '.jpg', heightmap*255)
+    # cv2.imwrite('../heightmaps/bag_24/frame_' + str(number) + '.jpg', heightmap*255)
+    cv2.imshow('Window 1', heightmap*255)
+    cv2.waitKey(1)
     # plt.figure(2)
     # plt.clf()
     # if number%5 == 0:
@@ -69,11 +71,14 @@ def discretize(points):
 
 
 def mask_heightmap(points_array, bool_array, heightmap):
+    heightmap = np.dstack((heightmap, heightmap, heightmap))
     points_array[:,0] -= np.amin(points_array[:,0])
     points_array[:,1] -= np.amin(points_array[:,1])
     points_array = points_array[bool_array == 1]
     x_co, y_co, z_co = discretize(points_array)
+    heightmap[x_co, y_co,0] = 0
     heightmap[x_co, y_co,1] = 1
+    heightmap[x_co, y_co,2] = 0
     return heightmap
 
 
@@ -111,7 +116,7 @@ def visualize_section_lines(points, img1):
         pt1, pt2 = fl.get_intercepts(line)
         img1 = fl.draw_line(img1, points[i], points[i+1], i)
         # img1 = fl.draw_line(img1.copy(), pt1, pt2, i)
-        img1 = cv2.resize(img1, (600, 210), interpolation = cv2.INTER_AREA)
-        cv2.imshow('Window 1', img1)
-        cv2.waitKey(1)
+    img1 = cv2.resize(img1, (600, 210), interpolation = cv2.INTER_AREA)
+    cv2.imshow('Window 1', img1)
+    cv2.waitKey(1)
     return img1

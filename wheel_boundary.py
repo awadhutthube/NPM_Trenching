@@ -33,7 +33,8 @@ def visualize_wheel_segment(bbox, heightmap):
 
 def fit_line(trans, slope, idx):
     shift1 = 80
-    shift2 = 120
+    shift2 = 65
+    shift3 = 160
     m = np.tan(np.pi*-slope/180)
     x, y, z = trans
     if m != 0:
@@ -44,9 +45,10 @@ def fit_line(trans, slope, idx):
         l1 = np.array([0,1,-y + shift1])
         l2 = np.array([0,1,-y - shift1])
         l3 = np.array([1,0,-x + shift2])
+        l4 = np.array([1,0,-x + shift3])
 
     
-    return l1, l2, l3
+    return l1, l2, l3, l4
 
 
 def get_points(bbox):
@@ -55,7 +57,7 @@ def get_points(bbox):
     return a, b
 
 
-def check_side(points, l1, l2, l3):
+def check_side(points, l1, l2, l3, l4):
     points[:,0] -= np.amin(points[:,0])
     points[:,1] -= np.amin(points[:,1])  
 
@@ -72,6 +74,9 @@ def check_side(points, l1, l2, l3):
     bool_array3 = points*l3
     bool_array3 = np.sum(bool_array3, axis = 1)
 
+    bool_array4 = points*l4
+    bool_array4 = np.sum(bool_array4, axis = 1)
+
     bool_array1[bool_array1 > 0] = 1
     bool_array1[bool_array1 < 0] = 0
     bool_array2[bool_array2 > 0] = 0
@@ -79,8 +84,11 @@ def check_side(points, l1, l2, l3):
 
     bool_array3[bool_array3 > 0] = 0
     bool_array3[bool_array3 < 0] = 1
+    bool_array4[bool_array4 > 0] = 1
+    bool_array4[bool_array4 < 0] = 0
 
     bool_array = np.multiply(bool_array1, bool_array2)
     bool_array = np.multiply(bool_array, bool_array3)
+    bool_array = np.multiply(bool_array, bool_array4)
     # print(bool_array)    
     return bool_array
