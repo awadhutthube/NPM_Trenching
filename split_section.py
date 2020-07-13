@@ -2,7 +2,7 @@ import numpy as np
 import os
 import cv2
 import matplotlib.pyplot as plt
-
+import time
 plt.ion()
 
 def compute_slope(hor, ver):
@@ -92,12 +92,16 @@ def get_transition(slope):
             flag = False
             mark = True
         elif abs(slope[i]) < 0.3 and mark:
-            mark = False
+            if (i - transition[-1]) < 3:
+                continue
             if abs(slope[i+2]) < 0.3:
                 transition.append(i)
                 flag = True
+                mark = False
             else:
-                transition.append(i+1)
+                if slope[i-2]*slope[i+2] <= 0:
+                    transition.append(i)
+                    mark = False
         # elif slope[i] - val > 0.3:
         #     transition.append(i)
         #     val = float('inf')
@@ -107,6 +111,7 @@ def get_transition(slope):
 def determine_characteristics(path):
     # plt.figure()
     for file_ in os.listdir(path):
+        # print(file_ + path)
         img = cv2.imread(path+file_,  cv2.IMREAD_GRAYSCALE)
         img[img > 200] = 255
         img[img < 50] = 0
@@ -130,13 +135,15 @@ def determine_characteristics(path):
         #     for pt in points:
         #         img = cv2.circle(img, (int(pt[0]), 69 - int(pt[1])), 1, (0,0, 255), 2) 
         #     img = cv2.resize(img, (600, 210), interpolation = cv2.INTER_AREA)
-        
-            cv2.imwrite('../output/transition/bag_3/' + file_, img)
+            cv2.imwrite('../output/transition/bag_10/' + file_, img)
+            # cv2.imwrite('../output/base_res/' + file_, img)
 
         # cv2.imshow('Window 1', img)
         # cv2.waitKey(0)
     return points
 
 if __name__ == '__main__':
-    file_path = '../output/slices/bag_3/'
+    file_path = '../output/slices/bag_10/'
+    # file_path = '../output/base/'
     determine_characteristics(file_path)
+    time.sleep(2)

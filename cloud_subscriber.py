@@ -17,7 +17,7 @@ import time
 import fit_line as fl
 from rover_msgs.msg import FeatureArray as fa
 from rover_msgs.msg import FeatureMsg as fm
-
+from datetime import datetime
 # Non-blocking visualization of images
 plt.ion()
 
@@ -36,6 +36,7 @@ mean_array = []
 num_slices = 5
 
 def cloud_sub_callback(msg):
+    start=datetime.now()
     global idx, mean_array, num_slices
     xyz = ros_numpy.point_cloud2.pointcloud2_to_xyz_array(msg, remove_nans=True)
         
@@ -59,6 +60,12 @@ def cloud_sub_callback(msg):
     trans -= mean_xyz
     trans = (trans*1000).round()
 
+    if euler_angles[1] > 0:
+        flip = True
+    else:
+        flip = False
+
+    # print("Euler angle is = {}".format(euler_angles[1]))
     # Generating heightmap using all points in the cloud
     heightmap = generate_heightmap(transformed_xyz.copy())
 
@@ -85,18 +92,20 @@ def cloud_sub_callback(msg):
     for i in range(num_slices):
         section = estimate.get_section(transformed_xyz, intervals[i], intervals[i+1])
         img1 = estimate.project_section(section, idx, i)
-        cv2.imwrite('../output/slices/bag_24/slice{}img{}.jpg'.format(i,idx), img1)
+        # cv2.imwrite('../output/slices/bag_40/slice{}img{}.jpg'.format(i,idx), img1)
+
         points, x_co, y_co = fl.get_transition_points(img1)        
         if len(points) != 6:
             continue
 
-        feature_list[i] = fl.compute_features(points, x_co, y_co)
+        feature_list[i] = fl.compute_features(img1, points, x_co, y_co, flip)
         boolean_list[i] = True
 
         # img1 = utils.visualize_section_lines(points, img1)
     
     publish_feature_msg(feature_list, boolean_list)
     print("Frame index is {}".format(idx))
+    print(datetime.now() - start)
     # print('Bool Array = {}'.format(boolean_list))
     # print('Feature Array = {}'.format(feature_list))
     print('-------------------------------------------')
@@ -111,6 +120,7 @@ def publish_feature_msg(f_list, b_list):
     for idx, element in enumerate(f_list):
         feature_msg = fm()
         if element == None:
+            feature_array.boolean_list = b_list
             continue
         else:
             feature_msg.section_no = idx
